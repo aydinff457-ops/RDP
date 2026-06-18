@@ -14,7 +14,7 @@ jobs:
         # 1. Install QEMU Emulator
         choco install qemu -y
         
-        # 2. Download ISO Windows 11 Resmi
+        # 2. Download ISO Windows 11 Resmi (Stabil & Support Bypass)
         Invoke-WebRequest -Uri "https://software-static.download.prss.microsoft.com/dbn/Win11_23H2_English_x64v2.iso" -OutFile "win11.iso"
         
         # 3. Bikin Virtual Disk sebesar 100 GB buat Windows 11
@@ -32,11 +32,12 @@ jobs:
         net localgroup "Remote Desktop Users" mabar /add
       shell: pwsh
 
-    - name: Install dan Hubungkan Tailscale
+    - name: Install dan Hubungkan Tailscale (Fix Error 400)
       run: |
         choco install tailscale -y
         Start-Service tailscale
-        & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --accept-routes
+        # Menggunakan perintah paling basic & aman untuk login otomatis tanpa bentrok controller
+        & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --unattended
       shell: pwsh
 
     - name: Booting Windows 11 ke Layar Installer
