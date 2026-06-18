@@ -1,0 +1,55 @@
+name: Windows 11 Pro Gaming RDP - Tailscale
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: Download dan Install QEMU + ISO Windows 11
+      run: |
+        # 1. Install QEMU Emulator
+        choco install qemu -y
+        
+        # 2. Download ISO Windows 11 Resmi
+        Invoke-WebRequest -Uri "https://software-static.download.prss.microsoft.com/dbn/Win11_23H2_English_x64v2.iso" -OutFile "win11.iso"
+        
+        # 3. Bikin Virtual Disk sebesar 100 GB buat Windows 11
+        & "C:\Program Files\qemu\qemu-img.exe" create -f qcow2 win11.qcow2 100G
+      shell: pwsh
+
+    - name: Mengaktifkan RDP & Membuat Akun Baru
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+        
+        net user mabar P@ssword2026 /add
+        net localgroup administrators mabar /add
+        net localgroup "Remote Desktop Users" mabar /add
+      shell: pwsh
+
+    - name: Install dan Hubungkan Tailscale
+      run: |
+        choco install tailscale -y
+        Start-Service tailscale
+        & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TAILSCALE_AUTHKEY }} --accept-routes
+      shell: pwsh
+
+    - name: Booting Windows 11 ke Layar Installer
+      run: |
+        Write-Host "========================================="
+        Write-Host " WINDOWS 11 SEDANG BERJALAN DI BACKGROUND "
+        Write-Host "========================================="
+        
+        # Menjalankan Windows 11 dengan RAM 8GB dan Driver Mouse khusus game 3D
+        & "C:\Program Files\qemu\qemu-system-x64.exe" -m 8G -smp 4 -boot d -cdrom win11.iso -hda win11.qcow2 -device usb-mouse -show-cursor -net nic,model=e1000 -net user,hostfwd=tcp::3389-:3389 -vnc :1
+        
+        $loop = $true
+        while($loop) {
+          Start-Sleep -Seconds 60
+        }
+      shell: pwsh
